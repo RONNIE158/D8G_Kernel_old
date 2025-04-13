@@ -48,7 +48,7 @@ jobs:
           git push || echo "Nothing to push"
 
       - name: Upload Patch Log
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: patch-diff-log
           path: patch.diff
