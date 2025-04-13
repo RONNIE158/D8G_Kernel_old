@@ -1,0 +1,38 @@
+name: Upstream Kernel (4.9 to 4.19)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  upstream:
+    name: Apply Kernel Patches
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Target Kernel (This Repo)
+      uses: actions/checkout@v3
+
+    - name: Apply Patches 4.14 → 4.19
+      run: |
+        mkdir patches && cd patches
+        set -e
+
+        echo "Upstreaming patch 4.14.x"
+        for i in $(seq -w 1 230); do
+          wget -q https://cdn.kernel.org/pub/linux/kernel/v4.x/patch-4.14.${i} || break
+          patch -p1 -d "$GITHUB_WORKSPACE" < patch-4.14.${i} || break
+        done
+
+        echo "Upstreaming patch 4.19.x"
+        for i in $(seq -w 0 31); do
+          wget -q https://cdn.kernel.org/pub/linux/kernel/v4.x/patch-4.19.${i} || break
+          patch -p1 -d "$GITHUB_WORKSPACE" < patch-4.19.${i} || break
+        done
+
+    - name: Commit and Push Changes
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+        git add .
+        git commit -m "Auto: Upstream patch to 4.19" || echo "No changes to commit"
+        git push || echo "Nothing to push"
