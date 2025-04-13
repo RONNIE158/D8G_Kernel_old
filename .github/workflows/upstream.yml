@@ -1,38 +1,54 @@
-name: Upstream Kernel (4.9 to 4.19)
+name: Kernel Upstream
 
 on:
   workflow_dispatch:
 
 jobs:
   upstream:
-    name: Apply Kernel Patches
+    name: Upstream Patch to 4.19
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Target Kernel (This Repo)
-      uses: actions/checkout@v3
+      - name: Checkout Kernel Repository
+        uses: actions/checkout@v3
 
-    - name: Apply Patches 4.14 → 4.19
-      run: |
-        mkdir patches && cd patches
-        set -e
+      - name: Configure Git Identity
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
 
-        echo "Upstreaming patch 4.14.x"
-        for i in $(seq -w 1 230); do
-          wget -q https://cdn.kernel.org/pub/linux/kernel/v4.x/patch-4.14.${i} || break
-          patch -p1 -d "$GITHUB_WORKSPACE" < patch-4.14.${i} || break
-        done
+      - name: Download and Apply Patches
+        run: |
+          for ver in $(seq -w 001 275); do
+            PATCH_URL="https://cdn.kernel.org/pub/linux/kernel/v4.x/incr/patch-4.14.$ver.xz"
+            PATCH_FILE="patch-4.14.$ver.xz"
+            wget -q "$PATCH_URL" || break
+            xz -d "$PATCH_FILE"
+            patch -p1 < "patch-4.14.$ver" || break
+          done
 
-        echo "Upstreaming patch 4.19.x"
-        for i in $(seq -w 0 31); do
-          wget -q https://cdn.kernel.org/pub/linux/kernel/v4.x/patch-4.19.${i} || break
-          patch -p1 -d "$GITHUB_WORKSPACE" < patch-4.19.${i} || break
-        done
+          for ver in $(seq -w 001 303); do
+            PATCH_URL="https://cdn.kernel.org/pub/linux/kernel/v4.x/incr/patch-4.19.$ver.xz"
+            PATCH_FILE="patch-4.19.$ver.xz"
+            wget -q "$PATCH_URL" || break
+            xz -d "$PATCH_FILE"
+            patch -p1 < "patch-4.19.$ver" || break
+          done
 
-    - name: Commit and Push Changes
-      run: |
-        git config user.name "GitHub Actions"
-        git config user.email "actions@github.com"
-        git add .
-        git commit -m "Auto: Upstream patch to 4.19" || echo "No changes to commit"
-        git push || echo "Nothing to push"
+      - name: Show Diff
+        run: git diff | tee patch.diff || echo "No diff"
+
+      - name: Commit Changes
+        run: |
+          git add .
+          git commit -m "Auto: Upstream patch to 4.19" || echo "No changes to commit"
+
+      - name: Push Changes
+        run: |
+          git push || echo "Nothing to push"
+
+      - name: Upload Patch Log
+        uses: actions/upload-artifact@v3
+        with:
+          name: patch-diff-log
+          path: patch.diff
